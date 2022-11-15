@@ -6,12 +6,12 @@ load(file = "data/cleaned/act_ls_sk.RData")
 load(file = "data/cleaned/lgh_ls_sk.RData")
 
 # Combine light data into a dataframe, get rid of summer fixes
-lgh_df <- do.call(rbind, lgh.ls.sk) %>%
+lgh_df <- bind_rows(lgh.ls.sk) %>%
   mutate(month = as.numeric(format(date_time, format = "%m"))) %>%
   filter(!month %in% c(5:7))
 
 # Combine activity data into a dataframe, get rid of summer fixes
-act_df <- do.call(rbind, act.ls.sk) %>%
+act_df <- bind_rows(act.ls.sk) %>%
   mutate(month = as.numeric(format(date_time, format = "%m"))) %>%
   filter(!month %in% c(5:7))
 

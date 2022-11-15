@@ -3,14 +3,14 @@
 load(file = "data/cleaned/act_ls_dt.RData")
 
 # Prep input list, discard empty entries and split by session id
-act.ls.moulttest <- do.call(rbind, act.ls.dt) %>%
+act.ls.moulttest <- bind_rows(act.ls.dt) %>%
   # Create timing variables
   mutate(year = as.integer(format((as_date(date) - 182), "%y")),
          julian = as.integer(format(date, "%j")),
          id = individ_id,
          id_year = paste(id, year, sep = "_")) %>%
   # Get rid of summer dates
-  filter(sun.angle > -6) %>%
+  filter(sun.angle > -3) %>%
   # Split by id year
   split(., .$id_year)
 
@@ -38,6 +38,18 @@ for(i in 1:length(act.ls.moulttest)){
       flight_simp <- (sum(1 - x$std_conductivity) / nrow(x))
       flight_ad_simp <- (sum(1 - x$std_conductivity_ad) / nrow(x))
       
+      flight_cat_simp <- (sum(x$std_conductivity < 0.05) / nrow(x))
+      flight_cat_ad <- (sum(x$std_conductivity_ad < 0.05) / nrow(x))
+      flight_cat_full <- (sum(x$act_final < 0.05) / nrow(x))
+      
+      rest_cat_simp <- (sum(x$std_conductivity > 0.95) / nrow(x))
+      rest_cat_ad <- (sum(x$std_conductivity_ad > 0.95) / nrow(x))
+      rest_cat_full <- (sum(x$act_final > 0.95) / nrow(x))
+      
+      ars_cat_simp <- 1 - (flight_cat_simp + rest_cat_simp)
+      ars_cat_ad <- 1 - (flight_cat_ad + rest_cat_ad)
+      ars_cat_full <- 1 - (flight_cat_full + rest_cat_full)
+      
       # Tucking data per day
       tuck <- (sum(x$leg_tuck) / nrow(x))
       
@@ -57,7 +69,10 @@ for(i in 1:length(act.ls.moulttest)){
       
       # Create data frame
       out <- data.frame(fixes, flight, flight_simp,
-                        flight_ad_simp, tuck, tuck_total, tuck_both)
+                        flight_ad_simp, tuck, tuck_total, tuck_both,
+                        flight_cat_simp, flight_cat_ad, flight_cat_full,
+                        ars_cat_simp, ars_cat_ad, ars_cat_full,
+                        rest_cat_simp, rest_cat_ad, rest_cat_full)
       
       # Transfer over specified variables
       out[, vars] <- x[1, vars]
@@ -170,7 +185,7 @@ for(i in 1:length(act.ls.moulttest)){
 }
 
 # rbind list into overall dataframe
-moult_df <- do.call(rbind, moult.ls) %>%
+moult_df <- bind_rows(moult.ls) %>%
   
   # Create bout id and year id variables
   mutate(bout_id = ifelse(moult > 0,
@@ -186,20 +201,24 @@ graph_df <- moult_df %>%
 # Plot out the results
 moult_plot <- 
   ggplot(graph_df) +
-  theme_minimal() +
+  # theme_minimal() +
   theme(legend.position = "none") +
   scale_alpha_continuous(range = c(0, 1), breaks = c(0, 1)) +
   scale_x_date(date_breaks = "2 months", date_labels = "%b") +
+  # scale_y_continuous(trans = "sqrt") +
   geom_point(aes(x = date, y = -0.05,
-                 alpha = prim_moult),
-             colour = "dark blue", size = 5, shape = 15) +
+                 alpha = prim_moult,
+                 colour = "First moult\ndetected"), size = 5, shape = 15) +
   geom_point(aes(x = date, y = -0.05,
-                 alpha = sec_moult),
-             colour = "dark red", size = 5, shape = 15) +
-  geom_line(aes(x = date, y = flight), colour = "green") +
-  geom_line(aes(x = date, y = rm_flight), colour = "blue") +
+                 alpha = sec_moult,
+                 colour = "Second moult\ndetected"), size = 5, shape = 15) +
+  geom_line(aes(x = date, y = sqrt(flight)), colour = "dark green") +
+  geom_line(aes(x = date, y = sqrt(rm_flight)), colour = "red") +
   labs(x = "Month", y = "Proportion of time dry") +
-  facet_wrap(~ ID, ncol =  1)
+  geom_hline(aes(yintercept = 0)) +
+  facet_wrap(~ ID, ncol =  1) +
+  scale_y_continuous(breaks = c(0, 0.224, 0.447, 0.671),
+                     labels = c("0", "0.05", "0.2", "0.45"))
 
 # Save off the graph
 ggsave(moult_plot, filename = "plots/moult_plot.png",
@@ -219,6 +238,47 @@ summary(tuck_test$tuck)
 summary(tuck_test$tuck_total)
 sd(tuck_test$tuck_total)
 sd(tuck_test$flight)
+
+summary(tuck_test$flight_simp)
+sd(tuck_test$flight_simp)
+summary(tuck_test$flight_ad_simp)
+sd(tuck_test$flight_ad_simp)
+
+meta_df <- tuck_test %>%
+  split(., .$id) %>%
+  lapply(., FUN = function(x){
+    flight <- mean(x$flight)
+    flight_simp <- mean(x$flight_simp)
+    flight_ad_simp <- mean(x$flight_ad_simp)
+    flight_cat_simp <- mean(x$flight_cat_simp)
+    flight_cat_ad <- mean(x$flight_cat_ad)
+    flight_cat_full <- mean(x$flight_cat_full)
+    ars_cat_simp <- mean(x$ars_cat_simp)
+    ars_cat_ad <- mean(x$ars_cat_ad)
+    ars_cat_full <- mean(x$ars_cat_full)
+    rest_cat_simp <- mean(x$rest_cat_simp)
+    rest_cat_ad <- mean(x$rest_cat_ad)
+    rest_cat_full <- mean(x$rest_cat_full)
+    
+    data.frame(flight, flight_simp, flight_ad_simp,
+               flight_cat_simp, flight_cat_ad, flight_cat_full,
+               ars_cat_simp, ars_cat_ad, ars_cat_full,
+               rest_cat_simp, rest_cat_ad, rest_cat_full)
+  }) %>%
+  bind_rows(.)
+
+summary(meta_df$flight)
+sd(meta_df$flight)
+summary(meta_df$flight_simp)
+sd(meta_df$flight_simp)
+summary(meta_df$flight_ad_simp)
+sd(meta_df$flight_ad_simp)
+summary(meta_df$flight_cat_simp)
+sd(meta_df$flight_cat_simp)
+summary(meta_df$flight_cat_ad)
+sd(meta_df$flight_cat_ad)
+summary(meta_df$flight_cat_full)
+sd(meta_df$flight_cat_full)
 
 # How many days did the bird spend less than 1% in flight
 sum(tuck_test$flight < 0.01) / nrow(tuck_test)
@@ -251,20 +311,20 @@ ggsave(tuck_plot,
 
 # Calculate flight metrics during moult
 tuck_test %>% filter(prim_moult > 0 | sec_moult > 0) %>%
-  select(flight, flight_simp, flight_ad_simp) %>% summary()
+  dplyr::select(flight, flight_simp, flight_ad_simp) %>% summary()
 
 # Calculate flight metrics outside moult
 tuck_test %>% filter(prim_moult == 0 & sec_moult == 0) %>%
-  select(flight, flight_simp, flight_ad_simp) %>% summary()
+  dplyr::select(flight, flight_simp, flight_ad_simp) %>% summary()
 
 # Get start/end dates of moult, as well as duration 
 moult_df %>% filter(prim_moult > 0) %>%
-  select(date, id) %>% split(., .$id) %>%
+  dplyr::select(date, id) %>% split(., .$id) %>%
   lapply(., function(x) summary(x))
 
 # Get start/end dates of second inferred moult, as well as duration
 moult_df %>% filter(sec_moult > 0) %>%
-  select(date, id) %>% split(., .$id) %>%
+  dplyr::select(date, id) %>% split(., .$id) %>%
   lapply(., function(x) summary(x))
 
 # Find average lat/lon of moult bouts

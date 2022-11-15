@@ -7,7 +7,6 @@ require(zoo)
 require(lubridate)
 require(purrr)
 require(raster)
-require(dplyr)
 require(ggplot2)
 require(oce)
 require(birk)
@@ -17,6 +16,7 @@ require(cowplot)
 require(hms)
 require(forcats)
 require(adehabitatLT)
+require(dplyr)
 
 # lowPoint ----------------------------------------------------------------
 

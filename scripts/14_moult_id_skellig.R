@@ -198,15 +198,19 @@ skellig_moult_plot <-
   scale_alpha_continuous(range = c(0, 1), breaks = c(0, 1)) +
   scale_size_continuous(range = c(3, 3)) +
   scale_x_date(date_breaks = "2 months", date_labels = "%b") +
-  geom_point(data = (graph_df %>% filter(prim_moult > 0)),
-                     aes(x = date, y = -0.05),
-             shape = 15, colour = "dark blue", size = 3) +
-  geom_line(aes(x = date, y = flight), colour = "green") +
-  geom_line(aes(x = date, y = rm_flight), colour = "blue") +
+  geom_point(aes(x = date, y = -0.05,
+                 alpha = prim_moult,
+                 colour = "First moult\ndetected"), size = 5, shape = 15) +
+  # geom_point(aes(x = date, y = -0.1,
+  #                alpha = sec_moult,
+  #                colour = "Second moult\ndetected"), size = 5, shape = 15) +
+  geom_line(aes(x = date, y = sqrt(flight)), colour = "dark green") +
+  geom_line(aes(x = date, y = sqrt(rm_flight)), colour = "red") +
   labs(x = "Month", y = "Proportion of time dry") +
-  facet_wrap(~id, ncol = 1, strip.position = "top") +
-  theme_minimal() +
-  theme(legend.position = "none")
+  geom_hline(aes(yintercept = 0)) +
+  facet_wrap(~ ID, ncol =  1) +
+  scale_y_continuous(breaks = c(0, 0.224, 0.447, 0.671),
+                     labels = c("0", "0.05", "0.2", "0.45"))
 
 # Find average lat/lon of moult bouts
 moult_meta <- split(moult_df_sm, moult_df_sm$id) %>%
