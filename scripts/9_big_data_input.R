@@ -118,8 +118,10 @@ act.ls <- lapply(act.ls,
                  FUN = function(x){
                    attributes(x)$row.names <- (1:length(x$date_time)); x})
 
+# Multicore to speed things up
 plan(multisession)
 
+# Append location etc to activity and light data
 system.time(
   act.ls <-
     future_lapply(act.ls,
@@ -138,8 +140,10 @@ system.time(
                   vars = c("colony", "col_lat",
                            "col_lon", "logger_model")))
 
+# Go back to single thread
 plan(sequential)
 
+# Save everything to be loaded fresh the next time
 save(pos.ls, file = "data/cleaned/pos_ls_pre.RData")
 
 save(lgh.ls, file = "data/cleaned/lgh_ls_pre.RData")

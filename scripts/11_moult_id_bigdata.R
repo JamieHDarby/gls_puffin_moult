@@ -1,3 +1,6 @@
+
+# Load in required data ---------------------------------------------------
+
 # Load in act list
 load("data/cleaned/act_ls_post.RData")
 
@@ -10,6 +13,8 @@ act.ls.moulttest <- bind_rows(act.ls) %>%
          id_year = paste(id, year, sep = "_")) %>%
   # Split by id year
   split(., .$id_year)
+
+# Run the moult identification process ------------------------------------
 
 # Create empty list
 moult.ls <- list()
@@ -163,6 +168,8 @@ moult_df <- bind_rows(moult.ls[which(indicator == "fine")]) %>%
   mutate(bout_id = ifelse(moult > 0,
                           paste(id, year, moult_bout, sep = "_"),
                           0))
+
+# Graph some of the outputs of this process -------------------------------
 
 require(forcats)
 

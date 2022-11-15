@@ -1,4 +1,6 @@
 
+# Load in required data ---------------------------------------------------
+
 # Load in act list
 load("data/cleaned/act_ls_sm2.RData")
 act.ls.sm1 <- act.ls %>%
@@ -38,6 +40,8 @@ act.ls.moulttest <- bind_rows(act.ls.sm.full) %>%
          id_year = paste(id, year, sep = "_")) %>%
   # Split by id year
   split(., .$id_year)
+
+# Run moult identification process ----------------------------------------
 
 # Create empty list
 moult.ls <- list()

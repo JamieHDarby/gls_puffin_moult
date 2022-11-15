@@ -35,30 +35,29 @@ for(i in 1:length(act.ls.moulttest)){
       # Flying data per day
       flight <- (sum(1 - x$act_final) / nrow(x))
       
+      # Get uncorrected time spent dry
       flight_simp <- (sum(1 - x$std_conductivity) / nrow(x))
+      # Get time spent dry adjusted with light levels only
       flight_ad_simp <- (sum(1 - x$std_conductivity_ad) / nrow(x))
       
+      # Extract categorical flight fixes, >95% dry, using various levels of
+      # correction
       flight_cat_simp <- (sum(x$std_conductivity < 0.05) / nrow(x))
       flight_cat_ad <- (sum(x$std_conductivity_ad < 0.05) / nrow(x))
       flight_cat_full <- (sum(x$act_final < 0.05) / nrow(x))
       
-      rest_cat_simp <- (sum(x$std_conductivity > 0.95) / nrow(x))
-      rest_cat_ad <- (sum(x$std_conductivity_ad > 0.95) / nrow(x))
-      rest_cat_full <- (sum(x$act_final > 0.95) / nrow(x))
-      
-      ars_cat_simp <- 1 - (flight_cat_simp + rest_cat_simp)
-      ars_cat_ad <- 1 - (flight_cat_ad + rest_cat_ad)
-      ars_cat_full <- 1 - (flight_cat_full + rest_cat_full)
-      
       # Tucking data per day
       tuck <- (sum(x$leg_tuck) / nrow(x))
       
+      # Total time spent tucking
       tuck_total <- sum(x$leg_tuck + x$leg_tuck2) / nrow(x)
       
+      # Time spent tucking both legs at once
       x$tuck_both <- ifelse(x$leg_tuck == 1 & x$leg_tuck2 == 1, 1, 0)
-      
+      # Total time spent tucking both legs
       tuck_both <- sum(x$tuck_both) / nrow(x)
       
+      # Variables to carry to new dataframe
       vars <- c("date", "julian", "year",
                 "id_year", "lat", "lon", "id",
                 "colony", "col_lat", "col_lon",
@@ -70,9 +69,7 @@ for(i in 1:length(act.ls.moulttest)){
       # Create data frame
       out <- data.frame(fixes, flight, flight_simp,
                         flight_ad_simp, tuck, tuck_total, tuck_both,
-                        flight_cat_simp, flight_cat_ad, flight_cat_full,
-                        ars_cat_simp, ars_cat_ad, ars_cat_full,
-                        rest_cat_simp, rest_cat_ad, rest_cat_full)
+                        flight_cat_simp, flight_cat_ad, flight_cat_full)
       
       # Transfer over specified variables
       out[, vars] <- x[1, vars]
@@ -140,6 +137,7 @@ for(i in 1:length(act.ls.moulttest)){
                       countdown = 1,
                       min.rate = 0.01)
   
+  # Set limits so that moult can't occur within 60 days of another moult event
   limits <-
     seq(min(days.df$julian[which(days.df$prim_moult > 0)]) - 60,
         max(days.df$julian[which(days.df$prim_moult > 0)]) + 60)
@@ -192,6 +190,8 @@ moult_df <- bind_rows(moult.ls) %>%
                           paste(id, year, moult_bout, sep = "_"),
                           0))
 
+# Graph results of moult identification -----------------------------------
+
 # Subset a dataframe of moults to retain left legs only
 graph_df <- moult_df %>%
   filter(!grepl("R", id)) %>%
@@ -224,6 +224,8 @@ moult_plot <-
 ggsave(moult_plot, filename = "plots/moult_plot.png",
        dpi = 500, height = 10, width = 6)
 
+# Calculate and plot some tucking metrics ---------------------------------
+
 # Create a dataframe without April to explore the tucking behaviour
 tuck_test <- moult_df %>%
   mutate(month = as.numeric(format(date, format = "%m")),
@@ -239,34 +241,37 @@ summary(tuck_test$tuck_total)
 sd(tuck_test$tuck_total)
 sd(tuck_test$flight)
 
+# Get proportion of time per day spent dry according to raw and light-corrected
+# immersion data
 summary(tuck_test$flight_simp)
 sd(tuck_test$flight_simp)
 summary(tuck_test$flight_ad_simp)
 sd(tuck_test$flight_ad_simp)
 
+# This extracts proportions of time per year as opposed to per day
 meta_df <- tuck_test %>%
+  # Split into list of individuals
   split(., .$id) %>%
+  # Apply function to each element of the list
   lapply(., FUN = function(x){
+    
+    # Continuous flight, sum of time spent dry all together
     flight <- mean(x$flight)
     flight_simp <- mean(x$flight_simp)
     flight_ad_simp <- mean(x$flight_ad_simp)
+    # Categorical flight, sum of fixes > 95% dry
     flight_cat_simp <- mean(x$flight_cat_simp)
     flight_cat_ad <- mean(x$flight_cat_ad)
     flight_cat_full <- mean(x$flight_cat_full)
-    ars_cat_simp <- mean(x$ars_cat_simp)
-    ars_cat_ad <- mean(x$ars_cat_ad)
-    ars_cat_full <- mean(x$ars_cat_full)
-    rest_cat_simp <- mean(x$rest_cat_simp)
-    rest_cat_ad <- mean(x$rest_cat_ad)
-    rest_cat_full <- mean(x$rest_cat_full)
     
+    # Group into a data frame
     data.frame(flight, flight_simp, flight_ad_simp,
-               flight_cat_simp, flight_cat_ad, flight_cat_full,
-               ars_cat_simp, ars_cat_ad, ars_cat_full,
-               rest_cat_simp, rest_cat_ad, rest_cat_full)
+               flight_cat_simp, flight_cat_ad, flight_cat_full)
   }) %>%
+  # Group the lists back into a dataframe
   bind_rows(.)
 
+# Summarise different metrics of flight time per year
 summary(meta_df$flight)
 sd(meta_df$flight)
 summary(meta_df$flight_simp)

@@ -1,4 +1,6 @@
 
+# Load in required data ---------------------------------------------------
+
 # Load in this dataframe
 load(file = "data/cleaned/act_ls_dt.RData")
 
@@ -13,6 +15,8 @@ act.ls.moulttest <- bind_rows(act.ls.dt) %>%
   filter(sun.angle > -3) %>%
   # Split by id year
   split(., .$id_year)
+
+# Run moult identification process ----------------------------------------
 
 # Create empty list
 moult.ls <- list()
@@ -138,6 +142,8 @@ moult_df <- bind_rows(moult.ls) %>%
   mutate(bout_id = ifelse(moult > 0,
     paste(id, year, moult_bout, sep = "_"),
     0))
+
+# Graph some outputs ------------------------------------------------------
 
 # Plot out the results
 ggplot(moult_df) +
